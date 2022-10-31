@@ -90,10 +90,7 @@ static string format_plane(Plane& p)
 {
 	string str;
 
-	str = fmt::format("Plane {} ({})", p.idx(), p.id());
-
-	if (p.fb_id())
-		str += fmt::format(" fb-id: {}", p.fb_id());
+	str = fmt::format("Plane {:>2} ({})", p.idx(), p.id());
 
 	string crtcs = join<Crtc*>(p.get_possible_crtcs(), " ", [](Crtc* crtc) { return to_string(crtc->idx()); });
 
@@ -111,9 +108,9 @@ static string format_plane(Plane& p)
 				   (uint32_t)p.get_prop_value("CRTC_H"));
 	}
 
-	string fmts = join<PixelFormat>(p.get_formats(), " ", [](PixelFormat fmt) { return PixelFormatToFourCC(fmt); });
+	if (p.fb_id())
+		str += fmt::format(" fb-id: {}", p.fb_id());
 
-	str += fmt::format(" ({})", fmts);
 
 	return str;
 }
