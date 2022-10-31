@@ -216,6 +216,10 @@ void Card::setup()
 	m_has_atomic = false;
 #endif
 
+	if (getenv("KMSXX_ENABLE_CLIENT_CAP_STEREO_3D") != 0) {
+		drmSetClientCap(m_fd, DRM_CLIENT_CAP_STEREO_3D, 1);
+	}
+
 	uint64_t has_dumb;
 	r = drmGetCap(m_fd, DRM_CAP_DUMB_BUFFER, &has_dumb);
 	m_has_dumb = r == 0 && has_dumb;
