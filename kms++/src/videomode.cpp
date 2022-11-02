@@ -110,18 +110,111 @@ static char sync_to_char(SyncPolarity pol)
 	}
 }
 
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+template<typename T>
+std::string join(const T& values, const std::string& delim)
+{
+	std::ostringstream ss;
+	for (const auto& v : values) {
+		if (&v != &values[0])
+			ss << delim;
+		ss << v;
+	}
+	return ss.str();
+}
+
+static const char *mode_type_names[] = {
+	// the first 3 are deprecated so don't care about a short name
+	"builtin", // deprecated
+	"clock_c", // deprecated
+	"crtc_c", // deprecated
+	"P", // "preferred",
+	"default", // deprecated,
+	"U", // "userdef",
+	"D", // "driver",
+};
+
+static const char *mode_flag_names[] = {
+	// the first 5 flags are displayed elsewhere
+	NULL, // "phsync",
+	NULL, // "nhsync",
+	NULL, // "pvsync",
+	NULL, // "nvsync",
+	NULL, // "interlace",
+	"dblscan",
+	"csync",
+	"pcsync",
+	"ncsync",
+	"hskew",
+	"bcast", // deprecated
+	"pixmux", // deprecated
+	"2x", // "dblclk",
+	"clkdiv2",
+};
+
+static const char *mode_3d_names[] = {
+	NULL, "3dfp", "3dfa", "3dla", "3dsbs", "3dldepth", "3dgfx", "3dtab", "3dsbs",
+};
+
+static const char *mode_aspect_names[] = {
+	NULL, "4:3", "16:9", "64:27", "256:135",
+};
+
+const string mode_type_str(uint32_t inval) {
+	uint32_t val = inval;
+	vector<string> v;
+	for (size_t i = 0; i < ARRAY_SIZE(mode_type_names); i++) {
+		if (val & (1 << i)) {
+			v.push_back(mode_type_names[i]);
+			val &= ~ (1 << i);
+		}
+	}
+	if (val != 0)
+		return fmt::format("0x{:x}", inval);
+	return join(v, "|");
+}
+
+const string mode_flag_str(uint32_t inval) {
+	uint32_t val = inval;
+	vector<string> v;
+	for (size_t i = 0; i < ARRAY_SIZE(mode_flag_names); i++) {
+		if (val & (1 << i)) {
+			if (mode_flag_names[i])
+				v.push_back(mode_flag_names[i]);
+			val &= ~(1 << i);
+		}
+	}
+	uint32_t threed = (val >> 14) & 0x1f;
+	if (threed < ARRAY_SIZE(mode_3d_names)) {
+		if (mode_3d_names[threed])
+			v.push_back(mode_3d_names[threed]);
+		val &= ~(0x1f << 14);
+	}
+	uint32_t aspect = (val >> 19) & 0xf;
+	if (aspect < ARRAY_SIZE(mode_aspect_names)) {
+		if (mode_aspect_names[aspect])
+			v.push_back(mode_aspect_names[aspect]);
+		val &= ~(0xf << 19);
+	}
+
+	if (val != 0)
+		return fmt::format("0x{:x}", inval);
+	return join(v, "|");
+}
+
 string Videomode::to_string_long() const
 {
 	string h = fmt::format("{}/{}/{}/{}/{}", hdisplay, hfp(), hsw(), hbp(), sync_to_char(hsync()));
 	string v = fmt::format("{}/{}/{}/{}/{}", vdisplay, vfp(), vsw(), vbp(), sync_to_char(vsync()));
 
-	string str = fmt::format("{} {:.3f} {} {} {} ({:.2f}) {:#x} {:#x}",
+	string str = fmt::format("{} {:.3f} {} {} {} ({:.2f}) {} {}",
 				 to_string_short(),
 				 clock / 1000.0,
 				 h, v,
 				 vrefresh, calculated_vrefresh(),
-				 flags,
-				 type);
+				 mode_type_str(type),
+				 mode_flag_str(flags));
 
 	return str;
 }
@@ -131,13 +224,13 @@ string Videomode::to_string_long_padded() const
 	string h = fmt::format("{}/{}/{}/{}/{}", hdisplay, hfp(), hsw(), hbp(), sync_to_char(hsync()));
 	string v = fmt::format("{}/{}/{}/{}/{}", vdisplay, vfp(), vsw(), vbp(), sync_to_char(vsync()));
 
-	string str = fmt::format("{:<16} {:7.3f} {:<18} {:<18} {:2} ({:.2f}) {:#10x} {:#6x}",
+	string str = fmt::format("{:<16} {:7.3f} {:<18} {:<18} {:2} ({:.2f}) {:<7} {}",
 				 to_string_short(),
 				 clock / 1000.0,
 				 h, v,
 				 vrefresh, calculated_vrefresh(),
-				 flags,
-				 type);
+				 mode_type_str(type),
+				 mode_flag_str(flags));
 
 	return str;
 }
