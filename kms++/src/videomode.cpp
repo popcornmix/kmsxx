@@ -110,91 +110,18 @@ static char sync_to_char(SyncPolarity pol)
 	}
 }
 
-static const char *mode_type_names[] = {
-	"builtin",
-	"clock_c",
-	"crtc_c",
-	"PRF", //"preferred",
-	"DEF", //"default",
-	"USR", //"userdef",
-	"DRV", //"driver",
-};
-
-static const char *mode_flag_names[] = {
-	"|", //"phsync",
-	"|", //"nhsync",
-	"|", //"pvsync",
-	"|", //"nvsync",
-	"INT", //"interlace",
-	"dblscan",
-	"csync",
-	"pcsync",
-	"ncsync",
-	"hskew",
-	"bcast",
-	"pixmux",
-	"2x", //"dblclk",
-	"clkdiv2",
-	"[5],|,3dfp,3dfa,3dla,3dsbs,3dldepth,3dgfx,3dtab,3dsbs", NULL, NULL, NULL, NULL,
-	"[4],|,4:3,16:9,64:27,256:135", NULL, NULL, NULL,
-};
-
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-const string mode_str(uint32_t type, const char *names[], unsigned int size) {
-	unsigned int i;
-	string s;
-	const char *sep = "";
-	for (i = 0; i < size;) {
-		string name;
-		// this is an N bit field with lookup into given string
-		int bits = 1;
-		if (names[i] && names[i][0] == '[') {
-			bits = atoi(names[i] + 1);
-			unsigned int v = (type >> i) & ((1 << bits) - 1);
-			char *tok = strdup(names[i] + 3);
-			char *s = strtok(tok, ",");
-			while (v-- > 0)
-				s = strtok(NULL, ",");
-			if (s)
-				name = fmt::format("{}", s);
-			// skip extra bits
-			free(tok);
-		} else {
-			if (names[i]) {
-				if (type & (1 << i))
-					name = fmt::format("{}", names[i]);
-				else
-					name = "|";
-			}
-		}
-		if (name.size() > 0 && name != "|") {
-			s += fmt::format("{}{}", sep, name);
-			sep = "|";
-		}
-		if (name.size() > 0)
-			type &= ~(((1 << bits) - 1) << i);
-		i += bits;
-	}
-	// if there are bits undecoded, just display the hex code
-	if (type)
-		return fmt::format("0x{:x}", type);
-	return s;
-}
-
-
 string Videomode::to_string_long() const
 {
 	string h = fmt::format("{}/{}/{}/{}/{}", hdisplay, hfp(), hsw(), hbp(), sync_to_char(hsync()));
 	string v = fmt::format("{}/{}/{}/{}/{}", vdisplay, vfp(), vsw(), vbp(), sync_to_char(vsync()));
 
-	string str = fmt::format("{} {:.3f} {} {} {} ({:.2f}) {} {}",
+	string str = fmt::format("{} {:.3f} {} {} {} ({:.2f}) {:#x} {:#x}",
 				 to_string_short(),
 				 clock / 1000.0,
 				 h, v,
 				 vrefresh, calculated_vrefresh(),
-				 mode_str(type, mode_type_names, ARRAY_SIZE(mode_type_names)),
-				 mode_str(flags, mode_flag_names, ARRAY_SIZE(mode_flag_names)));
+				 flags,
+				 type);
 
 	return str;
 }
@@ -204,13 +131,13 @@ string Videomode::to_string_long_padded() const
 	string h = fmt::format("{}/{}/{}/{}/{}", hdisplay, hfp(), hsw(), hbp(), sync_to_char(hsync()));
 	string v = fmt::format("{}/{}/{}/{}/{}", vdisplay, vfp(), vsw(), vbp(), sync_to_char(vsync()));
 
-	string str = fmt::format("{:<16} {:7.3f} {:<18} {:<18} {:2} ({:.2f}) {:<10} {}",
+	string str = fmt::format("{:<16} {:7.3f} {:<18} {:<18} {:2} ({:.2f}) {:#10x} {:#6x}",
 				 to_string_short(),
 				 clock / 1000.0,
 				 h, v,
 				 vrefresh, calculated_vrefresh(),
-				 mode_str(type, mode_type_names, ARRAY_SIZE(mode_type_names)),
-				 mode_str(flags, mode_flag_names, ARRAY_SIZE(mode_flag_names)));
+				 flags,
+				 type);
 
 	return str;
 }
